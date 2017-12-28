@@ -21,7 +21,11 @@ import google.oauth2.credentials
 from google.assistant.library import Assistant
 from google.assistant.library.event import EventType
 from google.assistant.library.file_helpers import existing_file
+from subprocess import Popen
+
 DEVICE_API_URL = 'https://embeddedassistant.googleapis.com/v1alpha2'
+
+CUR_DIR = os.path.abspath(os.path.dirname(__file__))
 
 
 def process_device_actions(event, device_id):
@@ -48,6 +52,7 @@ def process_event(event, device_id):
     """
     if event.type == EventType.ON_CONVERSATION_TURN_STARTED:
         print()
+        show_hal_9000_screen()
     print(event)
     if (event.type == EventType.ON_CONVERSATION_TURN_FINISHED and
             event.args and not event.args['with_follow_on_turn']):
@@ -55,6 +60,12 @@ def process_event(event, device_id):
     if event.type == EventType.ON_DEVICE_ACTION:
         for command, params in process_device_actions(event, device_id):
             print('Do command', command, 'with params', str(params))
+
+
+def show_hal_9000_screen():
+    image_path = os.path.join(CUR_DIR, os.pardir, os.pardir, os.pardir, os.pardir, 'hal-9000.png')
+    command = 'fbi -T 2 -d /dev/fb1 -noverbose -a %s' % os.path.abspath(image_path)
+    Popen(command, shell=True)
 
 
 def register_device(project_id, credentials, device_model_id, device_id):
