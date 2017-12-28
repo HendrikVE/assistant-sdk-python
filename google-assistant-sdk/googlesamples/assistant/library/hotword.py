@@ -52,20 +52,31 @@ def process_event(event, device_id):
     """
     if event.type == EventType.ON_CONVERSATION_TURN_STARTED:
         print()
-        show_hal_9000_screen()
+        set_hal_9000_screen_visible(True)
     print(event)
     if (event.type == EventType.ON_CONVERSATION_TURN_FINISHED and
             event.args and not event.args['with_follow_on_turn']):
         print()
+        set_hal_9000_screen_visible(False)
     if event.type == EventType.ON_DEVICE_ACTION:
         for command, params in process_device_actions(event, device_id):
             print('Do command', command, 'with params', str(params))
 
 
-def show_hal_9000_screen():
-    image_path = os.path.join(CUR_DIR, os.pardir, os.pardir, os.pardir, os.pardir, 'hal-9000.png')
-    command = 'fbi -T 2 -d /dev/fb1 -noverbose -a %s' % os.path.abspath(image_path)
-    Popen(command, shell=True)
+def set_hal_9000_screen_visible(visible):
+
+    if not visible:
+        Popen(['gpio', '-g', 'pwm', '18', '0'])
+    else:
+        Popen(['gpio', '-g', 'pwm', '18', '700'])
+
+        image_path = os.path.join(CUR_DIR, os.pardir, os.pardir, os.pardir, os.pardir, 'hal-9000.png')
+        command = 'fbi -T 2 -d /dev/fb1 -noverbose -a %s' % os.path.abspath(image_path)
+        Popen(command, shell=True)
+
+
+def setup_display():
+    Popen(['gpio', '-g', 'mode', '18', 'pwm'])
 
 
 def register_device(project_id, credentials, device_model_id, device_id):
@@ -118,6 +129,9 @@ def main():
     with open(args.credentials, 'r') as f:
         credentials = google.oauth2.credentials.Credentials(token=None,
                                                             **json.load(f))
+
+    setup_display()
+
     with Assistant(credentials, args.device_model_id) as assistant:
         events = assistant.start()
         print('device_model_id:', args.device_model_id + '\n' +
