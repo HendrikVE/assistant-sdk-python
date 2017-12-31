@@ -13,19 +13,35 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 from __future__ import print_function
+
 import argparse
-import os.path
 import json
+import os.path
+import sys
+from subprocess import Popen
+
 import google.auth.transport.requests
 import google.oauth2.credentials
 from google.assistant.library import Assistant
 from google.assistant.library.event import EventType
 from google.assistant.library.file_helpers import existing_file
-from subprocess import Popen
 
 DEVICE_API_URL = 'https://embeddedassistant.googleapis.com/v1alpha2'
 
+# append root of the python code tree to sys.apth so that imports are working
 CUR_DIR = os.path.abspath(os.path.dirname(__file__))
+CLIENT_APP_ROOT_DIR = os.path.normpath(os.path.join(CUR_DIR))
+
+PROJECT_ROOT_DIR = os.path.normpath(os.path.join(CUR_DIR, os.pardir))
+sys.path.append(PROJECT_ROOT_DIR)
+
+from hardware.driver_process import RequestDriverProcess
+from hardware.adafruit_22_display.display import RequestData as RequestDataDisplay
+
+PORT_DISPLAY = 7001
+ADDRESS_DISPLAY = 'tcp://127.0.0.1:%i' % PORT_DISPLAY
+
+rdp_display = RequestDriverProcess(ADDRESS_DISPLAY)
 
 
 def process_device_actions(event, device_id):
@@ -52,31 +68,21 @@ def process_event(event, device_id):
     """
     if event.type == EventType.ON_CONVERSATION_TURN_STARTED:
         print()
-        set_hal_9000_screen_visible(True)
+        rdp_display.request(RequestDataDisplay.TURN_ON, None)
+        show_hal_9000()
     print(event)
     if (event.type == EventType.ON_CONVERSATION_TURN_FINISHED and
             event.args and not event.args['with_follow_on_turn']):
         print()
-        set_hal_9000_screen_visible(False)
+        rdp_display.request(RequestDataDisplay.TURN_OFF, None)
     if event.type == EventType.ON_DEVICE_ACTION:
         for command, params in process_device_actions(event, device_id):
             print('Do command', command, 'with params', str(params))
 
 
-def set_hal_9000_screen_visible(visible):
-
-    if not visible:
-        Popen(['gpio', '-g', 'pwm', '18', '0'])
-    else:
-        Popen(['gpio', '-g', 'pwm', '18', '700'])
-
-        image_path = os.path.join(CUR_DIR, os.pardir, os.pardir, os.pardir, os.pardir, 'hal-9000.png')
-        command = 'fbi -T 2 -d /dev/fb1 -noverbose -a %s' % os.path.abspath(image_path)
-        Popen(command, shell=True)
-
-
-def setup_display():
-    Popen(['gpio', '-g', 'mode', '18', 'pwm'])
+def show_hal_9000():
+    image_path = os.path.join(CUR_DIR, os.pardir, os.pardir, os.pardir, os.pardir, 'hal-9000.png')
+    rdp_display.request(RequestDataDisplay.SHOW_IMAGE, image_path)
 
 
 def register_device(project_id, credentials, device_model_id, device_id):
@@ -129,8 +135,6 @@ def main():
     with open(args.credentials, 'r') as f:
         credentials = google.oauth2.credentials.Credentials(token=None,
                                                             **json.load(f))
-
-    setup_display()
 
     with Assistant(credentials, args.device_model_id) as assistant:
         events = assistant.start()
