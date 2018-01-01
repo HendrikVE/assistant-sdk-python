@@ -41,6 +41,7 @@ PORT_DISPLAY = 7001
 ADDRESS_DISPLAY = 'tcp://127.0.0.1:%i' % PORT_DISPLAY
 
 rdp_display = RequestDriverProcess(ADDRESS_DISPLAY)
+was_display_turned_off = True
 
 
 def process_device_actions(event, device_id):
@@ -65,15 +66,28 @@ def process_event(event, device_id):
     Args:
         event(event.Event): The current event to process.
     """
+    global was_display_turned_off
+
+    is_display_turned_off = not rdp_display.request(RequestDataDisplay.IS_TURNED_ON)
+
     if event.type == EventType.ON_CONVERSATION_TURN_STARTED:
         print()
-        rdp_display.request(RequestDataDisplay.TURN_ON, None)
+
+        if is_display_turned_off:
+            rdp_display.request(RequestDataDisplay.TURN_ON)
+
+        was_display_turned_off = is_display_turned_off
+
         show_hal_9000()
     print(event)
+
     if (event.type == EventType.ON_CONVERSATION_TURN_FINISHED and
             event.args and not event.args['with_follow_on_turn']):
         print()
-        rdp_display.request(RequestDataDisplay.TURN_OFF, None)
+
+        if was_display_turned_off:
+            rdp_display.request(RequestDataDisplay.TURN_OFF)
+
     if event.type == EventType.ON_DEVICE_ACTION:
         for command, params in process_device_actions(event, device_id):
             print('Do command', command, 'with params', str(params))
