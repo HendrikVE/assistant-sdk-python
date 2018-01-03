@@ -18,7 +18,6 @@ import argparse
 import json
 import os.path
 import sys
-from subprocess import Popen
 
 import google.auth.transport.requests
 import google.oauth2.credentials
@@ -41,7 +40,6 @@ PORT_DISPLAY = 7001
 ADDRESS_DISPLAY = 'tcp://127.0.0.1:%i' % PORT_DISPLAY
 
 rdp_display = RequestDriverProcess(ADDRESS_DISPLAY)
-was_display_turned_off = True
 
 
 def process_device_actions(event, device_id):
@@ -66,7 +64,6 @@ def process_event(event, device_id):
     Args:
         event(event.Event): The current event to process.
     """
-    global was_display_turned_off
 
     is_display_turned_off = not rdp_display.request(RequestDataDisplay.IS_TURNED_ON)
 
@@ -76,8 +73,6 @@ def process_event(event, device_id):
         if is_display_turned_off:
             rdp_display.request(RequestDataDisplay.TURN_ON)
 
-        was_display_turned_off = is_display_turned_off
-
         show_hal_9000()
     print(event)
 
@@ -85,8 +80,7 @@ def process_event(event, device_id):
             event.args and not event.args['with_follow_on_turn']):
         print()
 
-        if was_display_turned_off:
-            rdp_display.request(RequestDataDisplay.TURN_OFF)
+        rdp_display.request(RequestDataDisplay.TURN_OFF)
 
     if event.type == EventType.ON_DEVICE_ACTION:
         for command, params in process_device_actions(event, device_id):
