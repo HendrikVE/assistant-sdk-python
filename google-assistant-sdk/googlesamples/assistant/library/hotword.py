@@ -36,8 +36,7 @@ sys.path.append(PROJECT_ROOT_DIR)
 from hardware.driver_process import RequestDriverProcess
 from hardware.adafruit_22_display.display import RequestData as RequestDataDisplay
 
-PORT_DISPLAY = 7001
-ADDRESS_DISPLAY = 'tcp://127.0.0.1:%i' % PORT_DISPLAY
+ADDRESS_DISPLAY = ('localhost', 7001)
 
 rdp_display = RequestDriverProcess(ADDRESS_DISPLAY)
 
